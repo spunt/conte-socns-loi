@@ -1,10 +1,10 @@
 function run_loi2(test_tag)
 % RUN_TEST  Run Why/How Social/Nonsocial
-%  
+%
 %   USAGE: run_loi2([test_tag])
 %
 % Copyright (C) 2014  Bob Spunt, Ph.D.
-if nargin<2, test_tag = 0; end
+if nargin<1, test_tag = 0; end
 
 %% Check for Psychtoolbox %%
 try
@@ -19,32 +19,25 @@ script_name='--------- Photo Judgment Test ---------'; boxTop(1:length(script_na
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 
 %% DEFAULTS %%
-defaults = loi2_defaults; 
+defaults = loi2_defaults;
+KbName('UnifyKeyNames');
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
 %% Load Design and Setup Seeker Variable %%
-design = load([defaults.path.design filesep 'design.mat']); 
-load([defaults.path.design filesep 'all_question_data.mat'])
-load([defaults.path.design filesep 'add_ordered_qvalence.mat'])
+load([defaults.path.design filesep 'design.mat'])
+design = alldesign{1};
 blockSeeker = design.blockSeeker;
 trialSeeker = design.trialSeeker;
-preblockcues = design.preblockcues; 
-ordered_questions = preblockcues(blockSeeker(:,4));
-firstclause = {'Is the person ' 'Is the photo ' 'Is it a result of ' 'Is it going to result in '};
-pbc1 = preblockcues;
-pbc2 = pbc1; 
-for i = 1:length(firstclause)
-    
-    tmpidx = ~isnan(cellfun(@mean, regexp(preblockcues, firstclause{i})));
-    pbc1(tmpidx) = cellstr(firstclause{i}(1:end-1));
-    pbc2 = regexprep(pbc2, firstclause{i}, '');
-
-end
-
-nTrialsBlock = length(unique(trialSeeker(:,2)));
 trialSeeker(:,6:9) = 0;
-totalTime = design.totalTime;
+nTrialsBlock = length(unique(trialSeeker(:,2)));
+BOA  = diff([blockSeeker(:,3); design.totalTime]);
+maxBlockDur = defaults.cueDur + defaults.firstISI + (nTrialsBlock*defaults.maxDur) + (nTrialsBlock-1)*defaults.ISI;
+BOA   = BOA + (maxBlockDur - min(BOA));
+eventTimes          = cumsum([defaults.prestartdur; BOA]);
+blockSeeker(:,3)    = eventTimes(1:end-1);
+numTRs              = ceil(eventTimes(end)/defaults.TR);
+totalTime           = defaults.TR*numTRs;
 
 %% Print Defaults %%
 fprintf('Test Duration:         %d seconds', totalTime);
@@ -75,11 +68,8 @@ switch upper(computer)
     inputDevice = [];
 end
 resp_set = ptb_response_set(defaults.valid_keys); % response set
- 
+
 %% Initialize Screen %%
-ss = get(0, 'Screensize');
-ss = ss(3:4);
-if ss(1)/ss(2)==2560/1440, defaults.screenres = ss; end
 try
     w = ptb_setup_screen(0,250,defaults.font.name,defaults.font.size1, defaults.screenres); % setup screen
 catch
@@ -98,39 +88,61 @@ fprintf(fid,'Started: %s %2.0f:%02.0f\n',date,d(4),d(5));
 %% Make Images Into Textures %%
 DrawFormattedText(w.win,sprintf('LOADING\n\n0%% complete'),'center','center',w.white,defaults.font.wrap);
 Screen('Flip',w.win);
-slideName = cell(length(qim));
-slideTex = slideName; 
-for i = 1:length(qim)
-    slideName{i} = qim{i,2};
+slideName = cell(length(design.qim), 1);
+slideTex = slideName;
+for i = 1:length(design.qim)
+    slideName{i} = design.qim{i,2};
     tmp1 = imread([defaults.path.stim filesep 'loi2' filesep slideName{i}]);
-    tmp2 = tmp1;
-    slideTex{i} = Screen('MakeTexture',w.win,tmp2);
-    DrawFormattedText(w.win,sprintf('LOADING\n\n%d%% complete', ceil(100*i/length(qim))),'center','center',w.white,defaults.font.wrap);
+    slideTex{i} = Screen('MakeTexture',w.win,tmp1);
+    DrawFormattedText(w.win,sprintf('LOADING\n\n%d%% complete', ceil(100*i/length(design.qim))),'center','center',w.white,defaults.font.wrap);
     Screen('Flip',w.win);
 end;
 instructTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'loi2_instruction.jpg']));
 fixTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'fixation.jpg']));
+reminderTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'motion_reminder.jpg']));
+
+%% Get Cues %%
+ordered_questions  = design.preblockcues(blockSeeker(:,4));
+firstclause = {'Is the person ' 'Is the photo ' 'Is it a result of ' 'Is it going to result in '};
+pbc1 = design.preblockcues;
+pbc2 = pbc1;
+for i = 1:length(firstclause)
+    tmpidx = ~isnan(cellfun(@mean, regexp(design.preblockcues, firstclause{i})));
+    pbc1(tmpidx) = cellstr(firstclause{i}(1:end-1));
+    pbc2 = regexprep(pbc2, firstclause{i}, '');
+end
+pbc1     = strcat(pbc1, repmat('\n', 1, defaults.font.linesep));
 
 %% Get Coordinates for Centering ISI Cues
 isicues_xpos = zeros(length(design.isicues),1);
-isicues_ypos = isicues_xpos; 
-for q = 1:length(design.isicues)
-    [isicues_xpos(q), isicues_ypos(q)] = ptb_center_position(design.isicues{q},w.win);
-end
+isicues_ypos = isicues_xpos;
+for q = 1:length(design.isicues), [isicues_xpos(q), isicues_ypos(q)] = ptb_center_position(design.isicues{q},w.win); end
+
+%% Test Button Box %%
+if defaults.testbuttonbox, ptb_bbtester(inputDevice, w.win); end
 
 %==========================================================================
 %
 % START TASK PRESENTATION
-% 
+%
 %==========================================================================
 
 %% Present Instruction Screen %%
 Screen('DrawTexture',w.win, instructTex); Screen('Flip',w.win);
 
-%% Wait for Trigger to Begin %%
+%% Wait for Trigger to Start %%
 DisableKeysForKbCheck([]);
-secs=KbTriggerWait(trigger,inputDevice);	
-anchor=secs;	
+KbQueueRelease()
+secs=KbTriggerWait(trigger, inputDevice);
+anchor=secs;
+RestrictKeysForKbCheck(resp_set);
+
+%% Present Motion Reminder %%
+if defaults.motionreminder
+    Screen('DrawTexture',w.win,reminderTex)
+    Screen('Flip',w.win);
+    WaitSecs('UntilTime', anchor + blockSeeker(1,3) - 2);
+end
 
 try
 
@@ -139,14 +151,14 @@ try
     %======================================================================
     % BEGIN BLOCK LOOP
     %======================================================================
-    for b = 1:nBlocks 
+    for b = 1:nBlocks
 
         %% Present Fixation Screen %%
         Screen('DrawTexture',w.win, fixTex); Screen('Flip',w.win);
 
         %% Get Data for This Block %%
         tmpSeeker = trialSeeker(trialSeeker(:,1)==b,:);
-        pbcue1 = pbc1{blockSeeker(b,4)}; 
+        pbcue1 = pbc1{blockSeeker(b,4)};
         pbcue2 = pbc2{blockSeeker(b,4)}; % preblock question stimulus
         isicue = design.isicues{blockSeeker(b,4)}; % isi stimulus
         isicue_x = isicues_xpos(blockSeeker(b,4));
@@ -164,27 +176,17 @@ try
 
         %% Present Blank Screen Prior to First Trial %%
         WaitSecs('UntilTime',anchor + blockSeeker(b,3) + defaults.cueDur); Screen('Flip', w.win);
-        
+
         %==================================================================
         % BEGIN TRIAL LOOP
         %==================================================================
-        for t = 1:nTrialsBlock 
+        for t = 1:nTrialsBlock
 
             %% Prepare Screen for Current Trial %%
             Screen('DrawTexture',w.win,slideTex{tmpSeeker(t,5)})
-            
-            %% Check for Escape Key
-            if t==1
-                winopp = (anchor + blockSeeker(b,3) + defaults.cueDur + defaults.firstISI*.99) - GetSecs; 
-            else
-                winopp = (anchor + offset_dur + defaults.ISI*.99) - GetSecs; 
-            end
-            doquit = ptb_get_force_quit(inputDevice, KbName(defaults.escape), winopp);
-            if doquit
-                sca; rmpath(defaults.path.utilities)
-                fprintf('\nESCAPE KEY DETECTED\n'); return
-            end
-            
+            if t==1, WaitSecs('UntilTime',anchor + blockSeeker(b,3) + defaults.cueDur + defaults.firstISI);
+            else WaitSecs('UntilTime',anchor + offset_dur + defaults.ISI); end
+
             %% Present Screen for Current Trial & Prepare ISI Screen %%
             Screen('Flip',w.win);
             onset = GetSecs; tmpSeeker(t,6) = onset - anchor;
@@ -193,20 +195,22 @@ try
             else % present question reminder screen between every block trial
                 Screen('DrawText', w.win, isicue, isicue_x, isicue_y);
             end
-            WaitSecs(.20) % Ignore unreasonably fast button presses
 
             %% Look for Button Press %%
-            resp = [];
-            [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.maxDur);
+            [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.maxDur, defaults.ignoreDur);
             offset_dur = GetSecs - anchor;
 
-            %% Present ISI, and Look a Little Longer for a Response if None Was Registered %%
+           %% Present ISI, and Look a Little Longer for a Response if None Was Registered %%
             Screen('Flip', w.win);
-            isiflag = isempty(resp);
-            if isiflag, [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, .20); end
+            norespyet = isempty(resp);
+            if norespyet, [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.ISI*0.90); end
             if ~isempty(resp)
-                tmpSeeker(t,8) = str2num(resp(1));
-                tmpSeeker(t,7) = rt + (defaults.maxDur*isiflag);
+                if strcmpi(resp, defaults.escape)
+                    sca; rmpath(defaults.path.utilities)
+                    fprintf('\nESCAPE KEY DETECTED\n'); return
+                end
+                tmpSeeker(t,8) = find(strcmpi(KbName(resp_set), resp));
+                tmpSeeker(t,7) = rt + (defaults.maxDur*norespyet);
             end
             tmpSeeker(t,9) = offset_dur;
 
@@ -215,51 +219,83 @@ try
         %% Store Block Data & Print to Logfile %%
         trialSeeker(trialSeeker(:,1)==b,:) = tmpSeeker;
         for t = 1:size(tmpSeeker,1), fprintf(fid,[repmat('%d\t',1,size(tmpSeeker,2)) '\n'],tmpSeeker(t,:)); end
-        
+
 
     end % END BLOCK LOOP
-    
+
     %% Present Fixation Screen Until End of Scan %%
     WaitSecs('UntilTime', anchor + totalTime);
 
 catch
-    
-    sca; rmpath(defaults.path.utilities)
+
+    ptb_exit;
+    rmpath(defaults.path.utilities);
     psychrethrow(psychlasterror);
-    
+
 end;
 
-%% End of Test Screren %%
-DrawFormattedText(w.win,'TEST COMPLETE\n\nPress any key to exit.','center','center',w.white,defaults.font.wrap);
-Screen('Flip', w.win); 
-KbWait; 
-
 %% Create Results Structure %%
-result.blockSeeker = blockSeeker; 
-result.trialSeeker = trialSeeker;
-result.qim = qim;
-result.preblockcues = preblockcues; 
-result.isicues = design.isicues; 
+result.blockSeeker  = blockSeeker;
+result.trialSeeker  = trialSeeker;
+result.qim          = design.qim;
+result.qdata        = design.qdata;
+result.preblockcues = design.preblockcues;
+result.isicues      = design.isicues;
 
 %% Save Data to Matlab Variable %%
 d=clock;
-outfile=sprintf('explicit_socnsloi_%s_%s_%02.0f-%02.0f.mat',subjectID,date,d(4),d(5));
+outfile=sprintf('socns_loi2_%s_%s_%02.0f-%02.0f.mat',subjectID,date,d(4),d(5));
 try
-    save([defaults.path.data filesep outfile], 'subjectID', 'result', 'slideName', 'defaults'); 
+    save([defaults.path.data filesep outfile], 'subjectID', 'result', 'slideName', 'defaults');
 catch
-	fprintf('couldn''t save %s\n saving to explicit_socnsloi.mat\n',outfile);
-	save explicit_socnsloi.mat
+	fprintf('couldn''t save %s\n saving to socns_loi2.mat\n',outfile);
+	save socns_loi2.mat
 end;
 
-%% Exit %%
-sca; 
+%% End of Test Screen %%
+DrawFormattedText(w.win,'TEST COMPLETE\n\nPress any key to exit.','center','center',w.white,defaults.font.wrap);
+Screen('Flip', w.win);
+ptb_any_key;
+
+%% Exit & Attempt Backup %%
+ptb_exit;
 try
     disp('Backing up data... please wait.');
-    bob_sendemail({'bobspunt@gmail.com'},'peers asd loi behavioral data','see attached', [datadir filesep outfile]);
+    if test_tag
+        emailto = {'bobspunt@gmail.com'};
+        emailsubject = '[TEST RUN] Conte Social/Nonsocial LOI2 Behavioral Data';
+    else
+        emailto = {'bobspunt@gmail.com','conte3@caltech.edu'};
+        emailsubject = 'Conte Social/Nonsocial LOI2 Behavioral Data';
+    end
+    emailbackup(emailto, emailsubject, 'See attached.', [defaults.path.data filesep outfile]);
     disp('All done!');
 catch
     disp('Could not email data... internet may not be connected.');
 end
 rmpath(defaults.path.utilities)
+end
+function emailbackup(to,subject,message,attachment)
+
+if nargin == 3, attachment = ''; end
+
+% set up gmail SMTP service
+setpref('Internet','E_mail','neurospunt@gmail.com');
+setpref('Internet','SMTP_Server','smtp.gmail.com');
+setpref('Internet','SMTP_Username','neurospunt@gmail.com');
+setpref('Internet','SMTP_Password','socialbrain');
+
+% gmail server
+props = java.lang.System.getProperties;
+props.setProperty('mail.smtp.auth','true');
+props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
+props.setProperty('mail.smtp.socketFactory.port','465');
+
+% send
+if isempty(attachment)
+    sendmail(to,subject,message);
+else
+    sendmail(to,subject,message,attachment)
+end
 
 end

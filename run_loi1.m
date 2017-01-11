@@ -1,12 +1,15 @@
 function run_loi1(test_tag)
+% RUN_LOI1 - USAGE: run_task([order], [test_tag])
+%
 if nargin < 1, test_tag = 0; end
 
 %% Check for Psychtoolbox %%
 try
     ptbVersion = PsychtoolboxVersion;
 catch
-    url = 'https://github.com/Psychtoolbox-3/Psychtoolbox-3';
-    fprintf('Psychophysics Toolbox may not be installed or in your search path.\nSee: %s\n', url);
+    url = 'https://psychtoolbox.org/PsychtoolboxDownload';
+    fprintf('\n\t!!! WARNING !!!\n\tPsychophysics Toolbox does not appear to on your search path!\n\tSee: %s\n\n', url);
+    return
 end
 
 %% Print Title %%
@@ -14,21 +17,28 @@ script_name='-- Image Observation Test --'; boxTop(1:length(script_name))='=';
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 
 %% DEFAULTS %%
-defaults = loi1_defaults; 
+defaults = loi1_defaults;
+KbName('UnifyKeyNames');
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
 %% Load Design and Setup Seeker Variable %%
 load([defaults.path.design filesep 'loi1_design.mat'])
-randidx = randperm(length(alldesign));
-designnum = randidx(1);
-design = alldesign{randidx(1)};
-blockSeeker = design.blockSeeker;
-trialSeeker = design.trialSeeker;
+randidx            = randperm(length(alldesign));
+designnum          = 1;
+design             = alldesign{randidx(1)};
+blockSeeker        = design.blockSeeker;
+trialSeeker        = design.trialSeeker;
 trialSeeker(:,6:9) = 0;
-qim = design.qim;
-qdata = design.qdata;
-totalTime = design.totalTime;
+qim                = design.qim;
+qdata              = design.qdata;
+totalTime          = design.totalTime;
+BOA                = diff([blockSeeker(:,3); design.totalTime]);
+nTrialsBlock       = length(unique(trialSeeker(:,2)));
+eventTimes         = cumsum([defaults.prestartdur; BOA]);
+blockSeeker(:,3)   = eventTimes(1:end-1);
+numTRs             = ceil(eventTimes(end)/defaults.TR);
+totalTime          = defaults.TR*numTRs;
 
 %% Print Defaults %%
 fprintf('Test Duration:         %d seconds', totalTime);
@@ -61,9 +71,6 @@ end
 resp_set = ptb_response_set(defaults.valid_keys); % response set
 
 %% Initialize Screen %%
-ss = get(0, 'Screensize');
-ss = ss(3:4);
-if ss(1)/ss(2)==2560/1440, defaults.screenres = ss; end
 try
     w = ptb_setup_screen(0,250,defaults.font.name,defaults.font.size1, defaults.screenres); % setup screen
 catch
@@ -71,10 +78,9 @@ catch
     w = ptb_setup_screen(0,250,defaults.font.name,defaults.font.size1);
 end
 
-
 %% Initialize Logfile (Trialwise Data Recording) %%
 d=clock;
-logfile=fullfile(defaults.path.data, sprintf('logfile_implicit_socnsloi_sub%s.txt', subjectID));
+logfile=fullfile(defaults.path.data, sprintf('logfile_socns_loi1_sub%s.txt', subjectID));
 fprintf('\nA running log of this session will be saved to %s\n',logfile);
 fid=fopen(logfile,'a');
 if fid<1,error('could not open logfile!');end;
@@ -106,7 +112,7 @@ DrawFormattedText(w.win,sprintf('LOADING\n\n0%% complete'),'center','center',w.w
 Screen('Flip',w.win);
 stimdir = [defaults.path.stim filesep 'loi1'];
 stimidx = trialSeeker(:,5);
-slideName = cell(size(qim,1),1); slideTex= slideName; 
+slideName = cell(size(qim,1),1); slideTex= slideName;
 for i = 1:length(stimidx)
     slideName{stimidx(i)} = qim{stimidx(i),2};
     tmp1 = imread([stimdir filesep slideName{stimidx(i)}]);
@@ -116,10 +122,11 @@ for i = 1:length(stimidx)
     Screen('Flip',w.win);
 end;
 instructTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'loi1_instruction.jpg']));
-fixTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'fixation.jpg']));
-% 
-% %% Test Button Box %%
-% bbtester(inputDevice,w.win)
+fixTex      = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'fixation.jpg']));
+reminderTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'motion_reminder.jpg']));
+
+%% Test Button Box %%
+if defaults.testbuttonbox, ptb_bbtester(inputDevice, w.win); end
 
 % ====================
 % START TASK
@@ -128,114 +135,161 @@ fixTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'fixati
 %% Present Instruction Screen %%
 Screen('DrawTexture',w.win, instructTex); Screen('Flip',w.win);
 
-%% Wait for Trigger to Begin %%
+%% Wait for Trigger to Start %%
 DisableKeysForKbCheck([]);
-secs=KbTriggerWait(trigger,inputDevice);	
-anchor=secs;	
+KbQueueRelease()
+secs=KbTriggerWait(trigger, inputDevice);
+anchor=secs;
+RestrictKeysForKbCheck(resp_set);
+
+%% Present Motion Reminder %%
+if defaults.motionreminder
+    Screen('DrawTexture',w.win,reminderTex)
+    Screen('Flip',w.win);
+    WaitSecs('UntilTime', anchor + blockSeeker(1,3) - 2);
+end
 
 try
 
-if test_tag, nBlocks = 1; totalTime = 15; % for test run
-else nBlocks = length(blockSeeker); end
+    if test_tag, nBlocks = 1; totalTime = 15; % for test run
+    else nBlocks = length(blockSeeker); end
 
-for b = 1:nBlocks
-    
-    %% Present Fixation %%
-    Screen('DrawTexture',w.win, fixTex); Screen('Flip',w.win);
-    
-    %% Grab Data for Current Block %%
-    tmpSeeker = trialSeeker(trialSeeker(:,1)==b,:);
-    nTrialsBlock = length(tmpSeeker(:,1));
-    offset = 0; 
-    
-    for t = 1:nTrialsBlock
-        
-        %% Prep Trial Stim %%
-        Screen('DrawTexture',w.win,slideTex{tmpSeeker(t,5)});
-        
-        %% Check for Escape Key
-        if t==1
-            winopp = (anchor + blockSeeker(b,3)*.99) - GetSecs; 
-        else
-            winopp = (anchor + offset + defaults.ISI*.99) - GetSecs; 
-        end
-        doquit = ptb_get_force_quit(inputDevice, KbName(defaults.escape), winopp);
-        if doquit
-            sca; rmpath(defaults.path.utilities)
-            fprintf('\nESCAPE KEY DETECTED\n'); return
-        end
-        
-        %% Present Photo Stimulus, Prepare Next Stimulus %%
-        Screen('Flip',w.win);
-        onset = GetSecs; tmpSeeker(t,6) = onset - anchor;
-        if t==nTrialsBlock
-            Screen('DrawTexture', w.win, fixTex);
-        else
-            Screen('FillRect', w.win, w.black);
-        end
-        
-        resp = [];
-        if tmpSeeker(t,3)==5
-            %% Look for Response %%
+    for b = 1:nBlocks
+
+        %% Present Fixation %%
+        Screen('DrawTexture',w.win, fixTex); Screen('Flip',w.win);
+
+        %% Grab Data for Current Block %%
+        tmpSeeker = trialSeeker(trialSeeker(:,1)==b,:);
+        nTrialsBlock = length(tmpSeeker(:,1));
+        offset = 0;
+
+        for t = 1:nTrialsBlock
+
+            %% Prep Trial Stim %%
+            Screen('DrawTexture',w.win,slideTex{tmpSeeker(t,5)});
+
+            %% Check for Escape Key
+            if t==1
+                winopp = (anchor + blockSeeker(b,3)*.99) - GetSecs;
+            else
+                winopp = (anchor + offset + defaults.ISI*.99) - GetSecs;
+            end
+            doquit = ptb_get_force_quit(inputDevice, KbName(defaults.escape), winopp);
+            if doquit
+                sca; rmpath(defaults.path.utilities)
+                fprintf('\nESCAPE KEY DETECTED\n'); return
+            end
+
+            %% Present Photo Stimulus, Prepare Next Stimulus %%
+            Screen('Flip',w.win);
+            onset = GetSecs; tmpSeeker(t,6) = onset - anchor;
+            if t==nTrialsBlock
+                Screen('DrawTexture', w.win, fixTex);
+            else
+                Screen('FillRect', w.win, w.black);
+            end
+
             resp = [];
-            [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.maxRepDur);
-            Screen('Flip', w.win);
-            WaitSecs(.10);
-        else
-            WaitSecs('UntilTime',anchor + (onset-anchor) + defaults.maxDur);
-            Screen('Flip', w.win);
-        end
-        offset = GetSecs - anchor;
-        if ~isempty(resp)
-            tmpSeeker(t,8) = str2num(resp(1));
-            tmpSeeker(t,7) = rt;
-        end
-        tmpSeeker(t,9) = offset;
+            if tmpSeeker(t,3)==5
+                %% Look for Response %%
+                [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.maxRepDur, defaults.ignoreDur);
+                Screen('Flip', w.win);
+                WaitSecs(.05);
+            else
+                WaitSecs('UntilTime',anchor + (onset-anchor) + defaults.maxDur);
+                Screen('Flip', w.win);
+            end
+            offset = GetSecs - anchor;
+            if ~isempty(resp)
+                tmpSeeker(t,8) = str2num(resp(1));
+                tmpSeeker(t,7) = rt;
+            end
+            tmpSeeker(t,9) = offset;
 
-        
-    end % TRIAL LOOP
 
-    %% Store Block Data & Print to Logfile
-    trialSeeker(trialSeeker(:,1)==b,:) = tmpSeeker;
-    for t = 1:size(tmpSeeker,1), fprintf(fid,[repmat('%d\t',1,size(tmpSeeker,2)) '\n'],tmpSeeker(t,:)); end
+        end % TRIAL LOOP
 
-end % BLOCK LOOP
+        %% Store Block Data & Print to Logfile
+        trialSeeker(trialSeeker(:,1)==b,:) = tmpSeeker;
+        for t = 1:size(tmpSeeker,1), fprintf(fid,[repmat('%d\t',1,size(tmpSeeker,2)) '\n'],tmpSeeker(t,:)); end
+
+    end % BLOCK LOOP
 
     WaitSecs('UntilTime', anchor + totalTime);
 
 catch
-    
+
     Screen('CloseAll');
     Priority(0);
     psychrethrow(psychlasterror);
-    rmpath(utilitydir)
-    
+    rmpath(defaults.path.utilities)
+
 end;
 
 %% Results Structure %%
-result.blockSeeker = blockSeeker; 
+result.blockSeeker = blockSeeker;
 result.trialSeeker = trialSeeker;
 result.qim = qim;
 result.qdata = qdata;
 
 %% Save Data to Matlab Variable %%
 d=clock;
-outfile=sprintf('implicit_socnsloi_%s_design%d_%s_%02.0f-%02.0f.mat',subjectID,designnum,date,d(4),d(5));
+outfile=sprintf('socns_loi1_%s_design%d_%s_%02.0f-%02.0f.mat',subjectID,designnum,date,d(4),d(5));
 try
-    save([datadir filesep outfile], 'subjectID', 'result', 'slideName', 'defaults'); 
+    save([defaults.path.data filesep outfile], 'subjectID', 'result', 'slideName', 'defaults');
 catch
-	fprintf('couldn''t save %s\n saving to implicit_socnsloi.mat\n',outfile);
-	save implicit_socnsloi.mat
+	fprintf('couldn''t save %s\n saving to socns_loi1.mat\n',outfile);
+	save socns_loi1.mat
 end;
 
-%% Exit %%
-sca; 
+%% End of Test Screen %%
+DrawFormattedText(w.win,'TEST COMPLETE\n\nPress any key to exit.','center','center',w.white,defaults.font.wrap);
+Screen('Flip', w.win);
+ptb_any_key;
+
+%% Exit & Attempt Backup %%
+ptb_exit;
 try
     disp('Backing up data... please wait.');
-    bob_sendemail({'bobspunt@gmail.com'},'peers asd loi behavioral data','see attached', [datadir filesep outfile]);
+    if test_tag
+        emailto = {'bobspunt@gmail.com'};
+        emailsubject = '[TEST RUN] Conte Social/Nonsocial LOI1 Behavioral Data';
+    else
+        emailto = {'bobspunt@gmail.com','conte3@caltech.edu'};
+        emailsubject = 'Conte Social/Nonsocial LOI1 Behavioral Data';
+    end
+    emailbackup(emailto, emailsubject, 'See attached.', [defaults.path.data filesep outfile]);
     disp('All done!');
 catch
     disp('Could not email data... internet may not be connected.');
 end
 rmpath(defaults.path.utilities)
+end
+function emailbackup(to,subject,message,attachment)
+
+if nargin == 3, attachment = ''; end
+
+% set up gmail SMTP service
+setpref('Internet','E_mail','neurospunt@gmail.com');
+setpref('Internet','SMTP_Server','smtp.gmail.com');
+setpref('Internet','SMTP_Username','neurospunt@gmail.com');
+setpref('Internet','SMTP_Password','socialbrain');
+
+% gmail server
+props = java.lang.System.getProperties;
+props.setProperty('mail.smtp.auth','true');
+props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
+props.setProperty('mail.smtp.socketFactory.port','465');
+
+% send
+if isempty(attachment)
+    sendmail(to,subject,message);
+else
+    sendmail(to,subject,message,attachment)
+end
+
+end
+
+
 
