@@ -151,7 +151,7 @@ end
 
 try
 
-    if test_tag, nBlocks = 1; totalTime = 15; % for test run
+    if test_tag, nBlocks = 1; totalTime = round(totalTime/(size(blockSeeker, 1))); % for test run
     else nBlocks = length(blockSeeker); end
 
     for b = 1:nBlocks
@@ -171,9 +171,9 @@ try
 
             %% Check for Escape Key
             if t==1
-                winopp = (anchor + blockSeeker(b,3)*.99) - GetSecs;
+                winopp = (anchor + blockSeeker(b,3)) - GetSecs;
             else
-                winopp = (anchor + offset + defaults.ISI*.99) - GetSecs;
+                winopp = (anchor + offset + ISI) - GetSecs;
             end
             doquit = ptb_get_force_quit(inputDevice, KbName(defaults.escape), winopp);
             if doquit
@@ -195,7 +195,7 @@ try
                 %% Look for Response %%
                 [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.maxRepDur, defaults.ignoreDur);
                 Screen('Flip', w.win);
-                WaitSecs(.05);
+                WaitSecs(.15);
             else
                 WaitSecs('UntilTime',anchor + (onset-anchor) + defaults.maxDur);
                 Screen('Flip', w.win);
@@ -261,8 +261,9 @@ try
     end
     emailbackup(emailto, emailsubject, 'See attached.', [defaults.path.data filesep outfile]);
     disp('All done!');
-catch
+catch lasterr
     disp('Could not email data... internet may not be connected.');
+    rethrow(lasterr)
 end
 rmpath(defaults.path.utilities)
 end

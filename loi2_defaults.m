@@ -35,6 +35,7 @@ defaults.font.linesep   = 1;  % spacing between first and second lines of questi
 
 % Timing (specify in seconds)
 %==========================================================================
+defaults.TR             = 1;      % Your TR (in secs)
 defaults.cueDur         = 2.10;   % dur of question presentation
 defaults.maxDur         = 1.70;   % (max) dur of trial
 defaults.ISI            = 0.30;   % dur of interval between trials
@@ -45,8 +46,6 @@ defaults.ignoreDur      = 0.15;   % dur after trial presentation in which
                                   % useful when participant provides a late
                                   % response to the previous trial)
                                   % DEFAULT VALUE = 0.15
-defaults.TR             = 1;      % Your TR (in secs) - Task runtime will be adjusted
-                                  % to a multiple of the TR
 defaults.prestartdur    = 4;      % duration of fixation period after trigger
                                   % and before first block
 end

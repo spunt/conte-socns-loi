@@ -111,7 +111,7 @@ for i = 1:length(firstclause)
     pbc1(tmpidx) = cellstr(firstclause{i}(1:end-1));
     pbc2 = regexprep(pbc2, firstclause{i}, '');
 end
-pbc1     = strcat(pbc1, repmat('\n', 1, defaults.font.linesep));
+pbc1 = strcat(pbc1, repmat('\n', 1, defaults.font.linesep));
 
 %% Get Coordinates for Centering ISI Cues
 isicues_xpos = zeros(length(design.isicues),1);
@@ -146,7 +146,7 @@ end
 
 try
 
-    if test_tag, nBlocks = 1; totalTime = 25; % for test run
+    if test_tag, nBlocks = 1; totalTime = round(totalTime/(size(blockSeeker, 1))); % for test run
     else nBlocks = length(blockSeeker); end
     %======================================================================
     % BEGIN BLOCK LOOP
@@ -156,19 +156,19 @@ try
         %% Present Fixation Screen %%
         Screen('DrawTexture',w.win, fixTex); Screen('Flip',w.win);
 
-        %% Get Data for This Block %%
-        tmpSeeker = trialSeeker(trialSeeker(:,1)==b,:);
-        pbcue1 = pbc1{blockSeeker(b,4)};
-        pbcue2 = pbc2{blockSeeker(b,4)}; % preblock question stimulus
-        isicue = design.isicues{blockSeeker(b,4)}; % isi stimulus
-        isicue_x = isicues_xpos(blockSeeker(b,4));
-        isicue_y = isicues_ypos(blockSeeker(b,4));
+        %% Get Data for This Block (While Waiting for Block Onset) %%
+        tmpSeeker   = trialSeeker(trialSeeker(:,1)==b,:);
+        line1       = pbc1{blockSeeker(b,4)};  % line 1 of question cue
+        pbcue       = pbc2{blockSeeker(b,4)};  % line 2 of question cue
+        isicue      = design.isicues{blockSeeker(b,4)};  % isi cue
+        isicue_x    = isicues_xpos(blockSeeker(b,4));  % isi cue x position
+        isicue_y    = isicues_ypos(blockSeeker(b,4));  % isi cue y position
 
-        %% Prepare Question Cue Screen While Waiting %%
-        Screen('TextSize',w.win,defaults.font.size1); Screen('TextStyle',w.win,0);
-        DrawFormattedText(w.win,[pbcue1 '\n\n\n'],'center','center',w.white,defaults.font.wrap);
-        Screen('TextStyle',w.win,1); Screen('TextSize',w.win,defaults.font.size2);
-        DrawFormattedText(w.win,pbcue2,'center','center',w.white,defaults.font.wrap);
+        %% Prepare Question Cue Screen (Still Waiting) %%
+        Screen('TextSize',w.win, defaults.font.size1); Screen('TextStyle', w.win, 0);
+        DrawFormattedText(w.win,line1,'center','center',w.white, defaults.font.wrap);
+        Screen('TextStyle',w.win, 1); Screen('TextSize', w.win, defaults.font.size2);
+        DrawFormattedText(w.win,pbcue,'center','center', w.white, defaults.font.wrap);
 
         %% Present Question Screen and Prepare First ISI (Blank) Screen %%
         WaitSecs('UntilTime',anchor + blockSeeker(b,3)); Screen('Flip', w.win);
