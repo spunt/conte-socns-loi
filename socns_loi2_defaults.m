@@ -1,4 +1,4 @@
-function defaults = loi2_defaults
+function defaults = socns_loi2_defaults
 % DEFAULTS  Defines defaults for LOI2 (Explicit)
 %__________________________________________________________________________
 % Copyright (C) 2014  Bob Spunt, Ph.D.

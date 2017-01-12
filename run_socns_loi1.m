@@ -1,5 +1,5 @@
-function run_loi1(test_tag)
-% RUN_LOI1 - USAGE: run_task([order], [test_tag])
+function run_socns_loi1(test_tag)
+% RUN_SOCNS_LOI1 - USAGE: run_task([order], [test_tag])
 %
 if nargin < 1, test_tag = 0; end
 
@@ -17,7 +17,7 @@ script_name='-- Image Observation Test --'; boxTop(1:length(script_name))='=';
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 
 %% DEFAULTS %%
-defaults = loi1_defaults;
+defaults = socns_loi1_defaults;
 KbName('UnifyKeyNames');
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)

@@ -1,5 +1,5 @@
-function run_loi2(test_tag)
-% RUN_TEST  Run Why/How Social/Nonsocial
+function run_socns_loi2(test_tag)
+% RUN_SOCNS_LOI2  Run Why/How Social/Nonsocial
 %
 %   USAGE: run_loi2([test_tag])
 %
@@ -19,7 +19,7 @@ script_name='--------- Photo Judgment Test ---------'; boxTop(1:length(script_na
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 
 %% DEFAULTS %%
-defaults = loi2_defaults;
+defaults = socns_loi2_defaults;
 KbName('UnifyKeyNames');
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
