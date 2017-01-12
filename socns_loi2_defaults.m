@@ -31,7 +31,7 @@ defaults.font.name      = 'Helvetica'; % default font
 defaults.font.size1     = 42; % default font size (smaller)
 defaults.font.size2     = 46; % default font size (bigger)
 defaults.font.wrap      = 42; % default font wrapping (arg to DrawFormattedText)
-defaults.font.linesep   = 1;  % spacing between first and second lines of question cue.
+defaults.font.linesep   = 3;  % spacing between first and second lines of question cue.
 
 % Timing (specify in seconds)
 %==========================================================================

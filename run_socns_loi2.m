@@ -67,7 +67,7 @@ switch upper(computer)
     % Do nothing - return empty chosen_device
     inputDevice = [];
 end
-resp_set = ptb_response_set(defaults.valid_keys); % response set
+resp_set = ptb_response_set([defaults.valid_keys defaults.escape]); % response set
 
 %% Initialize Screen %%
 try
@@ -79,7 +79,7 @@ end
 
 %% Initialize Logfile (Trialwise Data Recording) %%
 d=clock;
-logfile=fullfile(defaults.path.data, sprintf('logfile_explicit_socnsloi_sub%s.txt', subjectID));
+logfile=fullfile(defaults.path.data, sprintf('logfile_socns_loi2_sub%s.txt', subjectID));
 fprintf('\nA running log of this session will be saved to %s\n',logfile);
 fid=fopen(logfile,'a');
 if fid<1,error('could not open logfile!');end;
@@ -132,10 +132,9 @@ Screen('DrawTexture',w.win, instructTex); Screen('Flip',w.win);
 
 %% Wait for Trigger to Start %%
 DisableKeysForKbCheck([]);
-KbQueueRelease()
 secs=KbTriggerWait(trigger, inputDevice);
 anchor=secs;
-RestrictKeysForKbCheck(resp_set);
+% RestrictKeysForKbCheck([resp_set defaults.escape]);
 
 %% Present Motion Reminder %%
 if defaults.motionreminder
@@ -146,7 +145,7 @@ end
 
 try
 
-    if test_tag, nBlocks = 1; totalTime = round(totalTime/(size(blockSeeker, 1))); % for test run
+    if test_tag, nBlocks = 1; totalTime = ceil(totalTime/(size(blockSeeker, 1))); % for test run
     else nBlocks = length(blockSeeker); end
     %======================================================================
     % BEGIN BLOCK LOOP
@@ -206,7 +205,7 @@ try
             if norespyet, [resp, rt] = ptb_get_resp_windowed_noflip(inputDevice, resp_set, defaults.ISI*0.90); end
             if ~isempty(resp)
                 if strcmpi(resp, defaults.escape)
-                    sca; rmpath(defaults.path.utilities)
+                    ptb_exit; rmpath(defaults.path.utilities)
                     fprintf('\nESCAPE KEY DETECTED\n'); return
                 end
                 tmpSeeker(t,8) = find(strcmpi(KbName(resp_set), resp));
@@ -253,7 +252,7 @@ catch
 end;
 
 %% End of Test Screen %%
-DrawFormattedText(w.win,'TEST COMPLETE\n\nPress any key to exit.','center','center',w.white,defaults.font.wrap);
+DrawFormattedText(w.win,'TEST COMPLETE\n\nPlease wait for further instructions.','center','center',w.white,defaults.font.wrap);
 Screen('Flip', w.win);
 ptb_any_key;
 

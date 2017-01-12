@@ -68,7 +68,7 @@ switch upper(computer)
     % Do nothing - return empty chosen_device
     inputDevice = [];
 end
-resp_set = ptb_response_set(defaults.valid_keys); % response set
+resp_set = ptb_response_set([defaults.valid_keys defaults.escape]); % response set
 
 %% Initialize Screen %%
 try
@@ -137,10 +137,9 @@ Screen('DrawTexture',w.win, instructTex); Screen('Flip',w.win);
 
 %% Wait for Trigger to Start %%
 DisableKeysForKbCheck([]);
-KbQueueRelease()
 secs=KbTriggerWait(trigger, inputDevice);
 anchor=secs;
-RestrictKeysForKbCheck(resp_set);
+% RestrictKeysForKbCheck([resp_set defaults.escape]);
 
 %% Present Motion Reminder %%
 if defaults.motionreminder
@@ -151,7 +150,7 @@ end
 
 try
 
-    if test_tag, nBlocks = 1; totalTime = round(totalTime/(size(blockSeeker, 1))); % for test run
+    if test_tag, nBlocks = 1; totalTime = ceil(totalTime/(size(blockSeeker, 1))); % for test run
     else nBlocks = length(blockSeeker); end
 
     for b = 1:nBlocks
@@ -169,16 +168,11 @@ try
             %% Prep Trial Stim %%
             Screen('DrawTexture',w.win,slideTex{tmpSeeker(t,5)});
 
-            %% Check for Escape Key
+            %% Wait
             if t==1
-                winopp = (anchor + blockSeeker(b,3)) - GetSecs;
+                WaitSecs('UntilTime', anchor + blockSeeker(b,3));
             else
-                winopp = (anchor + offset + ISI) - GetSecs;
-            end
-            doquit = ptb_get_force_quit(inputDevice, KbName(defaults.escape), winopp);
-            if doquit
-                sca; rmpath(defaults.path.utilities)
-                fprintf('\nESCAPE KEY DETECTED\n'); return
+                WaitSecs('UntilTime', anchor + offset + defaults.ISI);
             end
 
             %% Present Photo Stimulus, Prepare Next Stimulus %%
@@ -189,6 +183,7 @@ try
             else
                 Screen('FillRect', w.win, w.black);
             end
+            ShowCursor;
 
             resp = [];
             if tmpSeeker(t,3)==5
@@ -197,7 +192,11 @@ try
                 Screen('Flip', w.win);
                 WaitSecs(.15);
             else
-                WaitSecs('UntilTime',anchor + (onset-anchor) + defaults.maxDur);
+                resp = ptb_get_resp_windowed_noflip(inputDevice, KbName(defaults.escape), defaults.maxDur);
+                if resp
+                    ptb_exit; rmpath(defaults.path.utilities)
+                    fprintf('\nESCAPE KEY DETECTED\n'); return
+                end
                 Screen('Flip', w.win);
             end
             offset = GetSecs - anchor;
@@ -220,10 +219,9 @@ try
 
 catch
 
-    Screen('CloseAll');
-    Priority(0);
-    psychrethrow(psychlasterror);
+    ptb_exit;
     rmpath(defaults.path.utilities)
+    psychrethrow(psychlasterror);
 
 end;
 
@@ -244,7 +242,7 @@ catch
 end;
 
 %% End of Test Screen %%
-DrawFormattedText(w.win,'TEST COMPLETE\n\nPress any key to exit.','center','center',w.white,defaults.font.wrap);
+DrawFormattedText(w.win,'TEST COMPLETE\n\nPlease wait for further instructions.','center','center',w.white,defaults.font.wrap);
 Screen('Flip', w.win);
 ptb_any_key;
 
