@@ -21,6 +21,7 @@ fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 %% DEFAULTS %%
 defaults = socns_loi2_defaults;
 KbName('UnifyKeyNames');
+KbQueueRelease();
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
