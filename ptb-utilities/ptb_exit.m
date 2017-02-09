@@ -36,5 +36,6 @@ if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
     PsychJavaSwingCleanup;
 end
 Priority(0);
+clear all
 
 return;

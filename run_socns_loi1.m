@@ -19,7 +19,6 @@ fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 %% DEFAULTS %%
 defaults = socns_loi1_defaults;
 KbName('UnifyKeyNames');
-KbQueueRelease();
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
@@ -137,10 +136,10 @@ if defaults.testbuttonbox, ptb_bbtester(inputDevice, w.win); end
 Screen('DrawTexture',w.win, instructTex); Screen('Flip',w.win);
 
 %% Wait for Trigger to Start %%
-DisableKeysForKbCheck([]);
+% DisableKeysForKbCheck([]);
 secs=KbTriggerWait(trigger, inputDevice);
 anchor=secs;
-% RestrictKeysForKbCheck([resp_set defaults.escape]);
+RestrictKeysForKbCheck([resp_set defaults.escape]);
 
 %% Present Motion Reminder %%
 if defaults.motionreminder
