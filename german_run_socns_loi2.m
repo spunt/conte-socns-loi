@@ -1,4 +1,4 @@
-function run_socns_loi2(test_tag)
+function german_srun_socns_loi2(test_tag)
 % RUN_SOCNS_LOI2  Run Why/How Social/Nonsocial
 %
 %   USAGE: run_loi2([test_tag])
@@ -14,6 +14,9 @@ catch
     fprintf('Psychophysics Toolbox may not be installed or in your search path.\nSee: %s\n', url);
 end
 
+%% If Test, Skip SyncTests %%
+if test_tag, Screen('Preference', 'SkipSyncTests', 1); end
+
 %% Print Title %%
 script_name='--------- Photo Judgment Test ---------'; boxTop(1:length(script_name))='=';
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
@@ -25,7 +28,7 @@ trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
 %% Load Design and Setup Seeker Variable %%
-load([defaults.path.design filesep 'design.mat'])
+load([defaults.path.design filesep 'german_design.mat'])
 design = alldesign{1};
 blockSeeker = design.blockSeeker;
 trialSeeker = design.trialSeeker;
@@ -97,13 +100,38 @@ for i = 1:length(design.qim)
     DrawFormattedText(w.win,sprintf('LOADING\n\n%d%% complete', ceil(100*i/length(design.qim))),'center','center',w.white,defaults.font.wrap);
     Screen('Flip',w.win);
 end;
-instructTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'loi2_instruction.jpg']));
+instructTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'german_loi2_instruction.jpg']));
 fixTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'fixation.jpg']));
-reminderTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'motion_reminder.jpg']));
+reminderTex = Screen('MakeTexture', w.win, imread([defaults.path.stim filesep 'german_motion_reminder.jpg']));
 
 %% Get Cues %%
 ordered_questions  = design.preblockcues(blockSeeker(:,4));
-firstclause = {'Is the person ' 'Is the photo ' 'Is it a result of ' 'Is it going to result in '};
+firstclause = {'Drückt die Person'
+'Feiert die Person'
+'Greift die Person'
+'Hat die Person'
+'Hebt die Person'
+'Hilft die Person'
+'Ist die Person'
+'Ist dies das Ergebnis'
+'Ist dies das Resultat'
+'Ist diese Person'
+'Lächelt die Person'
+'Schaut die Person'
+'Schützt die Person'
+'Streitet sich die Person'
+'Teilt die Person'
+'Trägt die Person'
+'Verwendet die Person'
+'Wie stellt die Person'
+'Wird es zu einem'
+'Zeigt das Bild'
+'Zeigt das Foto'
+'Zeigt die Person'
+'Zieht die Person'
+'Zweifelt die Person'
+'Übt die Person'}';
+% firstclause = {'Is the person ' 'Is the photo ' 'Is it a result of ' 'Is it going to result in '};
 pbc1 = design.preblockcues;
 pbc2 = pbc1;
 for i = 1:length(firstclause)
