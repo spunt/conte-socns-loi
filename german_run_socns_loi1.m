@@ -13,7 +13,7 @@ catch
 end
 
 %% If Test, Skip SyncTests %%
-if test_tag, Screen('Preference', 'SkipSyncTests', 1); end
+% if test_tag, Screen('Preference', 'SkipSyncTests', 1); end
 
 %% Print Title %%
 script_name='-- Image Observation Test --'; boxTop(1:length(script_name))='=';

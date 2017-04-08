@@ -15,7 +15,7 @@ catch
 end
 
 %% If Test, Skip SyncTests %%
-if test_tag, Screen('Preference', 'SkipSyncTests', 1); end
+% if test_tag, Screen('Preference', 'SkipSyncTests', 1); end
 
 %% Print Title %%
 script_name='--------- Photo Judgment Test ---------'; boxTop(1:length(script_name))='=';
@@ -95,7 +95,7 @@ slideName = cell(length(design.qim), 1);
 slideTex = slideName;
 for i = 1:length(design.qim)
     slideName{i} = design.qim{i,2};
-    tmp1 = imread([defaults.path.stim filesep 'loi2' filesep slideName{i}]);
+    tmp1 = imread([defaults.path.stim filesep 'german_loi2' filesep slideName{i}]);
     slideTex{i} = Screen('MakeTexture',w.win,tmp1);
     DrawFormattedText(w.win,sprintf('LOADING\n\n%d%% complete', ceil(100*i/length(design.qim))),'center','center',w.white,defaults.font.wrap);
     Screen('Flip',w.win);
