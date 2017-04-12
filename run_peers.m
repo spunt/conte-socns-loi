@@ -19,25 +19,26 @@ script_name='--------- Photo Judgment Test ---------'; boxTop(1:length(script_na
 fprintf('\n%s\n%s\n%s\n',boxTop,script_name,boxTop)
 
 %% DEFAULTS %%
-defaults = socns_loi2_defaults;
+defaults = peers_defaults;
 KbName('UnifyKeyNames');
 trigger = KbName(defaults.trigger);
 addpath(defaults.path.utilities)
 
 %% Load Design and Setup Seeker Variable %%
-load([defaults.path.design filesep 'design.mat'])
+load([defaults.path.design filesep 'peers_design.mat'])
 design = alldesign{1};
 blockSeeker = design.blockSeeker;
 trialSeeker = design.trialSeeker;
-trialSeeker(:,6:9) = 0;
 nTrialsBlock = length(unique(trialSeeker(:,2)));
-BOA  = diff([blockSeeker(:,3); design.totalTime]);
-maxBlockDur = defaults.cueDur + defaults.firstISI + (nTrialsBlock*defaults.maxDur) + (nTrialsBlock-1)*defaults.ISI;
-BOA   = BOA + (maxBlockDur - min(BOA));
-eventTimes          = cumsum([defaults.prestartdur; BOA]);
-blockSeeker(:,3)    = eventTimes(1:end-1);
-numTRs              = ceil(eventTimes(end)/defaults.TR);
-totalTime           = defaults.TR*numTRs;
+trialSeeker(:,6:9) = 0;
+totalTime           = design.totalTime;
+% BOA  = diff([blockSeeker(:,3); design.totalTime]);
+% maxBlockDur = defaults.cueDur + defaults.firstISI + (nTrialsBlock*defaults.maxDur) + (nTrialsBlock-1)*defaults.ISI;
+% BOA   = BOA + (maxBlockDur - min(BOA));
+% eventTimes          = cumsum([defaults.prestartdur; BOA]);
+% blockSeeker(:,3)    = eventTimes(1:end-1);
+% numTRs              = ceil(eventTimes(end)/defaults.TR);
+% totalTime           = defaults.TR*numTRs;
 
 %% Print Defaults %%
 fprintf('Test Duration:         %d seconds', totalTime);
@@ -243,7 +244,7 @@ result.isicues      = design.isicues;
 
 %% Save Data to Matlab Variable %%
 d=clock;
-outfile=sprintf('socns_loi2_%s_%s_%02.0f-%02.0f.mat',subjectID,date,d(4),d(5));
+outfile=sprintf('lois_%s_%s_%02.0f-%02.0f.mat',subjectID,date,d(4),d(5));
 try
     save([defaults.path.data filesep outfile], 'subjectID', 'result', 'slideName', 'defaults');
 catch
@@ -262,10 +263,10 @@ try
     disp('Backing up data... please wait.');
     if test_tag
         emailto = {'bobspunt@gmail.com'};
-        emailsubject = '[TEST RUN] Conte Social/Nonsocial LOI2 Behavioral Data';
+        emailsubject = '[TEST RUN] PEERS Social/Nonsocial LOI2 Behavioral Data';
     else
         emailto = {'bobspunt@gmail.com','conte3@caltech.edu'};
-        emailsubject = 'Conte Social/Nonsocial LOI2 Behavioral Data';
+        emailsubject = 'PEERS Social/Nonsocial LOI2 Behavioral Data';
     end
     emailbackup(emailto, emailsubject, 'See attached.', [defaults.path.data filesep outfile]);
     disp('All done!');
